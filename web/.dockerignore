@@ -1,0 +1,11 @@
+.idea/
+.git/
+.gitignore
+*.md
+.env.template
+.eslintrc.json
+.prettierrc
+Dockerfile
+.dockerignore
+node_modules/
+.next/

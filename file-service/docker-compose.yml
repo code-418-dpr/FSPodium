@@ -1,0 +1,39 @@
+﻿services:
+  file-service:
+    image: file-service
+    build:
+      context: .
+      dockerfile: src/FSPodiumFileService/FSPodiumFileService.Web/Dockerfile
+    depends_on:
+      - minio
+      - seq
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+    ports:
+      - "6030:6030"
+    
+  seq:
+    image: datalust/seq:latest
+    container_name: seq-file-service
+    restart: always
+    environment:
+      - ACCEPT_EULA=Y
+    ports:
+      - "5345:5345"
+      - "8085:80"
+
+  minio:
+    container_name: minio-fsp
+    image: minio/minio
+    ports:
+      - "1688:1688"
+      - "1837:1837"
+    volumes:
+      - minio-data:/data
+    command: server --address ":1688" --console-address ":1837" /data
+    restart: always
+
+
+volumes:
+  minio-data:

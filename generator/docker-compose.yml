@@ -1,0 +1,6 @@
+﻿services:
+  fspodium-generator:
+    image: fspodium-generator
+    build:
+      context: .
+      dockerfile: FSPodium-generator/Dockerfile

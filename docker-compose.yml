@@ -1,0 +1,194 @@
+services:
+    reverse-proxy:
+        profiles:
+            - production
+        image: traefik:v3.1
+        command:
+            - --api.insecure=true
+            - --providers.docker=true
+            - --entrypoints.web.address=:80
+            - --entrypoints.websecure.address=:443
+            - --certificatesresolvers.myresolver.acme.tlschallenge=true
+            - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - letsencrypt:/letsencrypt
+
+    postgres:
+        image: postgres:17-alpine
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    web:
+        profiles:
+            - production
+        build:
+            context: ./web
+            dockerfile: Dockerfile
+        environment:
+            - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+            - AUTH_SECRET=${AUTH_SECRET}
+            - AUTH_TRUST_HOST=true
+            - BOT_URL=http://bot:8000
+            - NEXTAUTH_URL=${PUBLIC_WEB_URL}
+            - SMTP_HOST=${SMTP_HOST}
+            - SMTP_USER=${SMTP_USER}
+            - SMTP_PASSWORD=${SMTP_PASSWORD}
+            - WEB_URL=${PUBLIC_WEB_URL}
+            - PARSER_URL=http://report-parser:8080
+            - FILE_SERVICE_URL=http://file-service:8080
+        depends_on:
+            - migrator
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.web.rule=Host(`${PRODUCTION_DOMAIN}`)"
+            - "traefik.http.routers.web.entrypoints=websecure"
+            - "traefik.http.routers.web.tls.certresolver=myresolver"
+            - "traefik.http.routers.web-http.rule=Host(`${PRODUCTION_DOMAIN}`)"
+            - "traefik.http.routers.web-http.entrypoints=web"
+            - "traefik.http.routers.web-http.middlewares=redirect-to-https"
+            - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+    web-dev:
+        profiles:
+            - dev
+        build:
+            context: ./web
+            dockerfile: Dockerfile
+        environment:
+            - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+            - AUTH_SECRET=${AUTH_SECRET}
+            - AUTH_TRUST_HOST=true
+            - BOT_URL=http://bot:8000
+            - NEXTAUTH_URL=${PUBLIC_WEB_URL}
+            - SMTP_HOST=${SMTP_HOST}
+            - SMTP_USER=${SMTP_USER}
+            - SMTP_PASSWORD=${SMTP_PASSWORD}
+            - WEB_URL=${PUBLIC_WEB_URL}
+            - PARSER_URL=http://report-parser:8080
+            - FILE_SERVICE_URL=http://file-service:8080
+        ports:
+            - "3000:3000"
+        depends_on:
+            - migrator-dev
+
+    bot:
+        build:
+            context: ./bot
+            dockerfile: Dockerfile
+        environment:
+            - API_ID=${API_ID}
+            - API_HASH=${API_HASH}
+            - TOKEN=${TOKEN}
+            - TEST_TOKEN=${TEST_TOKEN}
+            - TEST_MODE_ENABLED=${TEST_MODE_ENABLED}
+            - BACKEND_PORT=8000
+            - WEB_URL=${WEB_URL}
+            - PUBLIC_WEB_URL=${PUBLIC_WEB_URL}
+            - LOGLEVEL=20
+        volumes:
+            - session_data:/bot/session
+        ports:
+            - "8000:8000"
+
+    report-parser:
+        build:
+            context: ./report-parser
+            dockerfile: Dockerfile
+
+    migrator:
+        profiles:
+            - production
+        build:
+            context: ./migrator
+            dockerfile: Dockerfile
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+            - POSTGRES_HOST=${POSTGRES_HOST}
+            - POSTGRES_PORT=5432
+            - PDF_FILE_URL=https://www.minsport.gov.ru/activity/government-regulation/edinyj-kalendarnyj-plan/
+        ports:
+            - "4000:4000"
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+    migrator-dev:
+        profiles:
+            - dev
+        build:
+            context: ./migrator
+            dockerfile: Dockerfile
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+            - POSTGRES_HOST=${POSTGRES_HOST}
+            - POSTGRES_PORT=5432
+            - PDF_FILE_URL=https://www.minsport.gov.ru/activity/government-regulation/edinyj-kalendarnyj-plan/
+        ports:
+            - "4000:4000"
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+    file-service:
+        image: file-service
+        build:
+            context: ./file-service
+            dockerfile: src/FSPodiumFileService/FSPodiumFileService.Web/Dockerfile
+        depends_on:
+            - minio
+            - seq
+        restart: always
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Docker
+        ports:
+            - "8080:8080"
+
+    seq:
+        image: datalust/seq:latest
+        container_name: seq-file-service
+        restart: always
+        environment:
+            - ACCEPT_EULA=Y
+        ports:
+            - "5345:5345"
+            - "8085:80"
+
+    minio:
+        container_name: minio-fsp
+        image: minio/minio
+        ports:
+            - "1688:1688"
+            - "1837:1837"
+        volumes:
+            - minio-data:/data
+        command: server --address ":1688" --console-address ":1837" /data
+        restart: always
+
+volumes:
+    postgres_data:
+    session_data:
+    letsencrypt:
+    minio-data:
