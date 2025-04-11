@@ -1,0 +1,20 @@
+### IDEs and editors
+.idea/
+.vs/
+.vscode/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+### Env files
+.env
+
+### Temp directory
+.temp/
+.tmp/
+
+### Misc
+services/
