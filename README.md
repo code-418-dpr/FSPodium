@@ -39,8 +39,12 @@
 
 Проект состоит из микросервисов, предназначенных для развёртывания в Docker:
 
-- [веб-приложение](https://github.com/code-418-dpr/FSPodium-web)  
-- ...
+- **[веб-приложение](https://github.com/code-418-dpr/FSPodium-web)**
+- **[Telegram-бот](https://github.com/code-418-dpr/FSPodium-bot)**
+- **[файловый сервис](https://github.com/code-418-dpr/FSPodium-file-service)**
+- **[парсер отчётов](https://github.com/code-418-dpr/FSPodium-report-parser)**
+- **PostgreSQL** — база данных
+- **Traefik** — обратный прокси
 
 ## В планах
 -   [ ] дополнительные варианты отображения контента
@@ -63,18 +67,24 @@
 
 ```shell
 git clone git@github.com:code-418-dpr/FSPodium-web.git services/FSPodium-web
+git clone git@github.com:code-418-dpr/FSPodium-web.git services/FSPodium-bot
+git clone git@github.com:code-418-dpr/FSPodium-web.git services/FSPodium-file-service
+git clone git@github.com:code-418-dpr/FSPodium-web.git services/FSPodium-report-parser
 ```
 
 или по HTTPS:
 
 ```shell
 git clone https://github.com/code-418-dpr/FSPodium-web.git services/FSPodium-web
+git clone https://github.com:code-418-dpr/FSPodium-web.git services/FSPodium-bot
+git clone https://github.com:code-418-dpr/FSPodium-web.git services/FSPodium-file-service
+git clone https://github.com:code-418-dpr/FSPodium-web.git services/FSPodium-report-parser
 ```
 
 После этого вы можете вносить изменения в каждый из сервисов по-отдельности (в соответствии с инструкциями, описанными в
 соответствующих README).
 
-## Запуск
+## Запуск и модификация
 
 0. Установите проект по инструкции выше.
 1. Создайте файл `.env` на основе [.env.template](.env.template) и настройте все описанные там параметры.
@@ -82,5 +92,19 @@ git clone https://github.com/code-418-dpr/FSPodium-web.git services/FSPodium-web
 3. Теперь запускать проект можно командой:
 
 ```shell
-docker compose up -d --build
+docker compose --profile server up -d --build
+```
+
+При модификации сервисов проекта и их тестировании может потребоваться создание файлов `.env` для каждого из них. Однако, при запуске всех сервисов в одном контейнере (из этого репозитория) их не должно быть. Чтобы не удалять их, для запуска сервисов **на локальном устройстве** можно воспользоваться следующим набором команд:
+
+```shell
+mv ./services/FSPodium-web/.env ./services/FSPodium-web/_.env
+mv ./services/FSPodium-bot/.env ./services/FSPodium-bot/_.env
+mv ./services/FSPodium-file-service/.env ./services/FSPodium-file-service/_.env
+mv ./services/FSPodium-report-parser/.env ./services/FSPodium-report-parser/_.env
+docker compose --profile local up -d --build
+mv ./services/FSPodium-web/_.env ./services/FSPodium-web/.env
+mv ./services/FSPodium-bot/_.env ./services/FSPodium-bot/.env
+mv ./services/FSPodium-file-service/_.env ./services/FSPodium-file-service/.env
+mv ./services/FSPodium-report-parser/_.env ./services/FSPodium-report-parser/.env
 ```
