@@ -3,7 +3,7 @@
 [![license](https://img.shields.io/github/license/code-418-dpr/FSPodium)](https://opensource.org/licenses/MIT)
 [![release](https://img.shields.io/github/v/release/code-418-dpr/FSPodium?include_prereleases)](https://github.com/code-418-dpr/FSPodium/releases)
 
-Платформа для координации между офисом Федерации спортивного программирования ДНР и её структурными подразделениями
+Платформа для взаимодействия между офисом Федерации спортивного программирования ДНР и её структурными подразделениями
 
 <details>
   <summary><h2>Демо</h2></summary>
